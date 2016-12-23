@@ -23,7 +23,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="暮晓春来迟，\n先于百花知。\n岁岁种桃树，\n开在断肠时。\n"/>
+        android:text="暮晓春来迟，\n先于百花知。\n岁岁种桃花，\n开在断肠时。\n"/>
 
     <ImageView
         android:id="@+id/iv_logo"

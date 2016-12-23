@@ -15,11 +15,14 @@ import android.widget.TextView;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+import io.reactivex.CompletableObserver;
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import io.reactivex.ObservableOnSubscribe;
+import io.reactivex.ObservableSource;
 import io.reactivex.Observer;
 import io.reactivex.Single;
 import io.reactivex.SingleEmitter;
@@ -28,7 +31,10 @@ import io.reactivex.SingleOnSubscribe;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Action;
+import io.reactivex.functions.BiFunction;
 import io.reactivex.functions.Consumer;
+import io.reactivex.functions.Function;
+import io.reactivex.observables.GroupedObservable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 
@@ -81,6 +87,13 @@ public class MainActivity extends AppCompatActivity {
 
         //----------------------------------------Operator------------------------------------------
 
+//        timer();
+
+//        interval();
+
+//        range();
+
+//        repeat();
 
 //        map();
 
@@ -90,13 +103,21 @@ public class MainActivity extends AppCompatActivity {
 
 //        concatMap();//和flatMap功能基本一样，唯一的区别在于它保证上游发射过来的顺序发送
 
+//        switchMap();//switchMap操作符会保存最新的Observable产生的结果而舍弃旧的结果
+
+//        window();
+
 //        zip();
 
 //        zip1();//从这里能看出其本质
 
-//        filter();
+//        filter();//过滤掉条件不合适的数据
 
-//        take();
+//        ofType();//似于filter操作符,但是ofType操作符是按照类型对结果进行过滤
+
+//        take();//take前N个数据
+
+//        skip();//skip前N个数据
 
 //        filterAndTakeLst();
 
@@ -118,20 +139,252 @@ public class MainActivity extends AppCompatActivity {
 
 //        merge();//不保证顺序（保证顺序用concat）
 
+
+        //merge一旦合并的某一个Observable中出现错误，就会马上停止合并，并对订阅者回调执行onError方法，
+        // 而mergeDelayError操作符会把错误放到所有结果都合并完成之后才执行
+        //注:rxjava2.0修改：发生错误后不再执行onError()
+//        mergeDelayError();
+
 //        sample();
 
+//        buffer();//会周期性的清空
+
+//        groupBy();
+
+//        ignoreElements();//忽略传过来的参数，只关心成功失败。注：rxjava2.0已经改进（删除onNext）
+
+//        join();
+
+//        groupJoin();
 
 
+        //----------------------------------------otherTodo------------------------------------------
 
-        //----------------------------------------RxAndroid------------------------------------------
-        //anther demo
+
+        // TODO: 2016/12/23  
+//        compareJustAndDefer();
+
+        // TODO: 2016/12/23 Observable的错误处理操作符
+//        onErrorReturn();
+//        onErrorResumeNext();
+//        onExceptionResumeNext();
+//        retry();
+    }
+
+
+    //    private void compareJustAndDefer() {
+//        int i = 10;
+//        Observable<Integer> justObservable = Observable.just(i);
+//        i = 15;
+//        Observable<Integer> deferObservable = Observable.defer(() -> Observable.just(i));
+//        i=20;
+//        justObservable.subscribe(integer -> Log.e("TAG", "integer : " + integer));
+//        i=30;
+//        deferObservable.subscribe(integer ->Log.e("TAG", "integer : "+integer));
+//    }
+
+    private void groupJoin() {
+
+        Observable<Long> observable = Observable
+                .interval(0, 1, TimeUnit.SECONDS)
+                .map(aLong -> aLong * 5)
+                .take(5);
+
+        Observable<Long> observable1 = Observable
+                .interval(500, 1000, TimeUnit.MILLISECONDS)
+                .map(aLong -> aLong * 10)
+                .take(6);
+
+
+        observable
+                .groupJoin(
+                        observable1,
+                        aLong -> Observable.just(aLong).delay(600, TimeUnit.MILLISECONDS),
+                        aLong -> Observable.just(aLong).delay(700, TimeUnit.MILLISECONDS),
+                        new BiFunction<Long, Observable<Long>, Observable<Long>>() {
+                            @Override
+                            public Observable<Long> apply(Long aLong, Observable<Long> longObservable) throws Exception {
+                                return longObservable.map(new Function<Long, Long>() {
+                                    @Override
+                                    public Long apply(Long aLong2) throws Exception {
+                                        return aLong + aLong2;
+                                    }
+                                });
+                            }
+                        }
+                )
+                .subscribe(new Observer<Observable<Long>>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        Log.e("TAG", "onSubscribe");
+                    }
+
+                    @Override
+                    public void onNext(Observable<Long> value) {
+                        Log.e("TAG", "onNext : " + value);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.e("TAG", "onError");
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.e("TAG", "onComplete");
+                    }
+                });
+    }
+
+    private void join() {
+        Observable<Long> observable = Observable
+                .interval(0, 1, TimeUnit.SECONDS)
+                .map(aLong -> aLong * 5)
+                .take(5);
+
+        Observable<Long> observable1 = Observable
+                .interval(500, 1000, TimeUnit.MILLISECONDS)
+                .map(aLong -> aLong * 10)
+                .take(6);
+
+
+        observable
+                .join(
+                        observable1,
+                        new Function<Long, ObservableSource<Long>>() {
+                            @Override
+                            public ObservableSource<Long> apply(Long aLong) throws Exception {
+                                return Observable.just(aLong).delay(600, TimeUnit.MILLISECONDS);
+                            }
+                        },
+                        new Function<Long, ObservableSource<Long>>() {
+                            @Override
+                            public ObservableSource<Long> apply(Long aLong) throws Exception {
+                                return Observable.just(aLong).delay(700, TimeUnit.MILLISECONDS);
+                            }
+                        },
+                        new BiFunction<Long, Long, String>() {
+                            @Override
+                            public String apply(Long aLong, Long aLong2) throws Exception {
+                                return " result : " + aLong + aLong2;
+                            }
+                        })
+                .subscribe(new Observer<String>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        Log.e("TAG", "onSubscribe");
+                    }
+
+                    @Override
+                    public void onNext(String value) {
+                        Log.e("TAG", "onNext --> " + value);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.e("TAG", "onError");
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.e("TAG", "onComplete");
+                    }
+                });
+
+
+        //-------------------------采用lambda表达式------------------------------------
+
+        observable
+                .join(
+                        observable1,
+                        aLong -> Observable.just(aLong).delay(600, TimeUnit.MILLISECONDS),
+                        aLong -> Observable.just(aLong).delay(700, TimeUnit.MILLISECONDS),
+                        (aLong, aLong2) -> " result : " + aLong + aLong2)
+
+                .subscribe(s -> Log.e("TAG", "s : " + s));
+
+    }
+
+    private void ignoreElements() {
+        Observable
+                .just(1, 2, 3, 4, 5, 6, 7)
+                .ignoreElements()
+                .subscribe(new CompletableObserver() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        Log.e("TAG", "onSubscribe");
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.e("TAG", "onComplete");
+
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.e("TAG", "onError");
+                    }
+                });
+    }
+
+    private void groupBy() {
+        Observable
+                .interval(0, 1, TimeUnit.SECONDS)
+                .groupBy(new Function<Long, Long>() {
+                    @Override
+                    public Long apply(Long aLong) throws Exception {
+                        return aLong % 5;
+                    }
+                })
+                .subscribe(new Consumer<GroupedObservable<Long, Long>>() {
+                    @Override
+                    public void accept(GroupedObservable<Long, Long> longLongGroupedObservable) throws Exception {
+                        longLongGroupedObservable.subscribe(new Consumer<Long>() {
+                            @Override
+                            public void accept(Long aLong) throws Exception {
+                                Log.e("TAG", "key : " + longLongGroupedObservable.getKey() + " value : " + aLong);
+                            }
+                        });
+                    }
+                });
+    }
+
+
+    private void buffer() {
+
+        //note:buffer操作符周期性地收集源Observable产生的结果到列表中，
+        // 并把这个列表提交给订阅者，
+        // 订阅者处理后，清空buffer列表!!!!!!!!!!
+        // 同时接收下一次收集的结果并提交给订阅者，周而复始。
+        final String[] mails = {"Here is an email", "Another email", "Yet another email"};
+        Random random = new Random();
+        Observable
+                .interval(1, 2, TimeUnit.SECONDS)
+//                .create((ObservableOnSubscribe<String>) e -> e.onNext(mails[random.nextInt(mails.length)]))
+//                .range(0,10)
+//                .delay(2,TimeUnit.SECONDS)
+//                .repeat(4)
+//                .subscribeOn(Schedulers.io())//指定线程
+//                .observeOn(AndroidSchedulers.mainThread())
+//                .buffer(3)                //缓存个数
+                .buffer(3, TimeUnit.SECONDS)//缓存时间
+                .subscribe(new Consumer<List<Long>>() {
+                    @Override
+                    public void accept(List<Long> longs) throws Exception {
+                        for (int i = 0; i < longs.size(); i++) {
+                            Log.e("TAG", "i : " + i);
+                        }
+                        Log.e("TAG", "----------------------------------");
+                    }
+                });
 
     }
 
     private void sample() {
 
         Observable
-                .just("1", "2", "3", "4", "5", "3", "3", "6", "1","2")
+                .just("1", "2", "3", "4", "5", "3", "3", "6", "1", "2")
 //                .count()//统计发射数据的项目
                 .map(s -> Integer.parseInt(s))
                 .filter(integer -> integer.intValue() % 2 != 0)
@@ -141,8 +394,61 @@ public class MainActivity extends AppCompatActivity {
                     Log.e("TAG", "integer : " + integer + " , integer2 : " + integer2);
                     return integer + integer2;
                 })
-                .delay(3,TimeUnit.SECONDS)
+                .delay(3, TimeUnit.SECONDS)
                 .subscribe(integer -> Log.e("TAG", "integer : " + integer));
+
+    }
+
+    private void mergeDelayError() {
+
+        Observable<String> observable1 = Observable
+                .create(new ObservableOnSubscribe<String>() {
+                    @Override
+                    public void subscribe(ObservableEmitter<String> e) throws Exception {
+                        e.onNext("hi");
+                        e.onNext("merge");
+                    }
+                })
+                .subscribeOn(Schedulers.newThread());
+
+        Observable<Integer> observable2 = Observable
+                .create(new ObservableOnSubscribe<Integer>() {
+                    @Override
+                    public void subscribe(ObservableEmitter<Integer> e) throws Exception {
+                        e.onNext(1);
+                        e.onNext(2);
+                        e.onError(new Throwable("人为制造异常"));
+                        e.onNext(3);
+                        e.onNext(4);
+                    }
+                })
+                .subscribeOn(Schedulers.newThread());
+
+
+        Observable
+                .mergeDelayError(observable1, observable2)
+                .subscribeOn(Schedulers.newThread())
+                .subscribe(new Observer<Object>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        Log.e("TAG", "onSubscribe");
+                    }
+
+                    @Override
+                    public void onNext(Object value) {
+                        Log.e("TAG", "value : " + value);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.e("TAG", "onError ： " + e);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.e("TAG", "onComplete");
+                    }
+                });
 
     }
 
@@ -163,6 +469,7 @@ public class MainActivity extends AppCompatActivity {
                     public void subscribe(ObservableEmitter<Integer> e) throws Exception {
                         e.onNext(1);
                         e.onNext(2);
+                        e.onError(new Throwable("人为制造异常"));
                         e.onNext(3);
                         e.onNext(4);
                     }
@@ -186,7 +493,7 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(Throwable e) {
-                        Log.e("TAG", "onError");
+                        Log.e("TAG", "onError ： " + e);
                     }
 
                     @Override
@@ -426,11 +733,26 @@ public class MainActivity extends AppCompatActivity {
                 .subscribe(integer -> Log.e("TAG", "integer : " + integer));
     }
 
+    private void skip() {
+        Observable
+                .just(1, 2, 3, 4, 5, 6, 7, 8, 9)
+                .skip(3)
+                .subscribe(integer -> Log.e("TAG", "integer --> " + integer));
+
+    }
+
     private void take() {
         Observable
                 .just(1, 2, 3, 4, 5, 6, 7, 8, 9)
                 .take(3)     //takeLast(3)
                 .subscribe(integer -> Log.e("TAG", "integer : " + integer));
+    }
+
+    private void ofType() {
+        Observable
+                .just(1, "hi", true, 100L, 0.15f, "ofType")
+                .ofType(String.class)
+                .subscribe(s -> Log.e("TAG", "the result is : " + s));
     }
 
     private void filter() {
@@ -553,6 +875,49 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private void window() {
+        Observable
+                .interval(0, 3, TimeUnit.SECONDS)
+//                .window(3)
+                .take(10)
+                .window(3, TimeUnit.SECONDS)
+                .subscribe(new Consumer<Observable<Long>>() {
+                    @Override
+                    public void accept(Observable<Long> longObservable) throws Exception {
+                        Log.e("TAG", "----------------------------------------- ");
+                        longObservable.subscribe(new Consumer<Long>() {
+                            @Override
+                            public void accept(Long aLong) throws Exception {
+                                Log.e("TAG", "aLong --> " + aLong);
+                            }
+                        });
+                    }
+                });
+    }
+
+    private void switchMap() {
+        Observable
+                .just(10, 20, 30)
+                .switchMap(new Function<Integer, ObservableSource<Integer>>() {
+                    @Override
+                    public ObservableSource<Integer> apply(Integer integer) throws Exception {
+                        //10的延迟执行时间为200毫秒、20和30的延迟执行时间为180毫秒
+                        int delay = 200;
+                        if (integer > 10)
+                            delay = 180;
+                        Log.e("TAG", "integer : " + integer);
+                        return Observable.fromArray(new Integer[]{integer, integer / 2}).delay(delay, TimeUnit.MILLISECONDS);
+                    }
+                })
+                .subscribe(new Consumer<Integer>() {
+                    @Override
+                    public void accept(Integer integer) throws Exception {
+                        Log.e("TAG", "integer -> " + integer);
+                    }
+                });
+    }
+
+
     private void concatMap() {
 
         Observable
@@ -616,9 +981,35 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .map(integer -> "This is the result : " + integer)
                 .subscribe(s -> Log.e("TAG", "s : " + s));
-
     }
 
+    private void repeat() {
+        Observable
+                .range(2, 3)
+                .repeat(2)  //重复次数
+                .subscribe(integer -> Log.e("TAG", "integer -> " + integer));
+    }
+
+    private void range() {
+        Observable
+                .range(3, 10)
+                .subscribe(integer -> Log.e("TAG", "integer -> " + integer));
+    }
+
+    private void interval() {
+        Observable
+                .interval(
+                        5,              //5秒延迟后开始执行
+                        2,              //每隔2秒产生一个数字
+                        TimeUnit.SECONDS)//时间单位：秒
+                .subscribe(aLong -> Log.e("TAG", "aLong -> " + aLong));
+    }
+
+    private void timer() {
+        Observable
+                .timer(2, TimeUnit.SECONDS)//延迟2秒产生一个数字，然后结束
+                .subscribe(aLong -> Log.e("TAG", "aLong -> " + aLong));
+    }
 
     private void k() {
         Observable
